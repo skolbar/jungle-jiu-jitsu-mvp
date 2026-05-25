@@ -1,12 +1,13 @@
 {
-  "name": "my-v0-project",
+  "name": "jungle-jiu-jitsu-mvp",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "typecheck": "tsc --noEmit --pretty false"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -70,9 +71,12 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.6",
     "postcss": "8.5.15",
     "tailwindcss": "^4.1.9",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8.46.0"
   },
   "overrides": {
     "postcss": "8.5.15"

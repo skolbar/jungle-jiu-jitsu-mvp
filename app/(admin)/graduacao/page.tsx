@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Award, TrendingUp } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { SAFE_PROFILE_COLUMNS } from "@/lib/domain/profile-select"
 import { computeGraduationProgress, CLASSES_PER_GRADE } from "@/lib/domain/graduation"
 
 const getBeltColor = (belt: string) => {
@@ -44,7 +45,7 @@ export default function GraduacaoPage() {
       const supabase = createClient()
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select(SAFE_PROFILE_COLUMNS)
         .eq("role", "student")
         .order("total_classes", { ascending: false })
 

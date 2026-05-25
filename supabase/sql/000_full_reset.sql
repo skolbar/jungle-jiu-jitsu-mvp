@@ -1,5 +1,7 @@
 -- JUNGLE JIU-JITSU - Full Database Setup
--- Execute this entire file in Supabase SQL Editor
+-- DANGER: destructive legacy setup script.
+-- Do not run this against production. It drops application tables.
+-- Keep only for disposable local/staging rebuilds.
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;

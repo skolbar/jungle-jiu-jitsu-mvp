@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Mail, Calendar, LogOut, Lock, Camera, Save, Loader2, Award, User, Shield } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { SAFE_PROFILE_COLUMNS } from "@/lib/domain/profile-select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getBeltName } from "@/lib/domain/belts"
 import type { Belt } from "@/lib/domain/types"
@@ -65,7 +66,7 @@ export default function StudentProfilePage() {
 
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+      const { data, error } = await supabase.from("profiles").select(SAFE_PROFILE_COLUMNS).eq("id", user.id).single()
 
       if (error) throw error
 

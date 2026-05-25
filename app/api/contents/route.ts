@@ -1,12 +1,17 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse, type NextRequest } from "next/server"
+import { isAuthFailure, requireAdminProfile, requireAuthenticatedProfile } from "@/lib/auth/api-auth"
+import { contentCreateSchema, parseJsonBody } from "@/lib/api/validation"
+
+const CONTENT_COLUMNS = "id,title,description,type,url,required_belt,required_degree,module_slug,category,created_at"
 
 export async function GET(request: NextRequest) {
-  const supabase = await createServerClient()
+  const auth = await requireAuthenticatedProfile()
+  if (isAuthFailure(auth)) return auth.response
+
   const searchParams = request.nextUrl.searchParams
   const moduleSlug = searchParams.get("module_slug")
 
-  let query = supabase.from("contents").select("*").order("created_at", { ascending: false })
+  let query = auth.supabase.from("contents").select(CONTENT_COLUMNS).order("created_at", { ascending: false })
 
   if (moduleSlug) {
     query = query.eq("module_slug", moduleSlug)
@@ -23,10 +28,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient()
-    const body = await request.json()
+    const auth = await requireAdminProfile()
+    if (isAuthFailure(auth)) return auth.response
 
-    const { data, error } = await supabase
+    const parsed = await parseJsonBody(request, contentCreateSchema)
+    if ("response" in parsed) return parsed.response
+
+    const body = parsed.data
+
+    const { data, error } = await auth.supabase
       .from("contents")
       .insert({
         title: body.title,
@@ -38,7 +48,7 @@ export async function POST(request: NextRequest) {
         module_slug: body.module_slug,
         category: body.category,
       })
-      .select()
+      .select(CONTENT_COLUMNS)
       .single()
 
     if (error) {

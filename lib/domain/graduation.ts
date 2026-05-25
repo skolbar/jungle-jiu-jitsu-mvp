@@ -36,8 +36,10 @@ export interface GraduationProgress {
   canPromoteBelt: boolean
 }
 
+type GraduationProfile = Pick<Profile, "belt" | "degree" | "cycle_classes">
+
 // Compute graduation progress for a profile
-export function computeGraduationProgress(profile: Profile): GraduationProgress {
+export function computeGraduationProgress(profile: GraduationProfile): GraduationProgress {
   const { belt, degree, cycle_classes } = profile
   const classesPerGrade = CLASSES_PER_GRADE[belt]
   const isBlackBelt = belt === "black"

@@ -1,3 +1,7 @@
+-- DANGER: destructive legacy setup script.
+-- Do not run this against production. It drops application tables.
+-- Keep only for historical reference or disposable local/staging rebuilds.
+
 -- Drop existing tables
 DROP TABLE IF EXISTS public.announcements CASCADE;
 DROP TABLE IF EXISTS public.contents CASCADE;

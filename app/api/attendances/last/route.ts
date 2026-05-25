@@ -1,13 +1,16 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { isAuthFailure, requireAdminProfile } from "@/lib/auth/api-auth"
 
 export async function GET() {
-  const supabase = await createServerClient()
+  const auth = await requireAdminProfile()
+  if (isAuthFailure(auth)) return auth.response
+
+  const supabase = auth.supabase
 
   // Fetch all students (role=student only)
   const { data: students, error: studentsError } = await supabase
     .from("profiles")
-    .select("id, full_name, belt, degree, email")
+    .select("id, full_name, belt, degree")
     .eq("role", "student")
 
   if (studentsError) {
@@ -46,7 +49,6 @@ export async function GET() {
       full_name: student.full_name,
       belt: student.belt,
       degree: student.degree,
-      email: student.email,
       lastAttendanceDate: lastDate,
       daysSinceLastAttendance: daysSince,
     }

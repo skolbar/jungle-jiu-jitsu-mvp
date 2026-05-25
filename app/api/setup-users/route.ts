@@ -1,23 +1,31 @@
-import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { isSetupRoutesEnabled } from "@/lib/setup/access"
+
+function requiredEnv(name: string) {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(`Missing ${name}`)
+  }
+  return value
+}
 
 export async function POST() {
+  if (!isSetupRoutesEnabled()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
   try {
-    console.log("[v0] Setup: Starting user creation...")
+    const adminEmail = requiredEnv("SETUP_ADMIN_EMAIL")
+    const adminPassword = requiredEnv("SETUP_ADMIN_PASSWORD")
+    const studentEmail = requiredEnv("SETUP_STUDENT_EMAIL")
+    const studentPassword = requiredEnv("SETUP_STUDENT_PASSWORD")
 
-    // Create admin client
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-
-    console.log("[v0] Setup: Admin client created")
+    const supabase = createAdminClient()
 
     const { data: adminUser, error: adminError } = await supabase.auth.admin.createUser({
-      email: "admin@jungle.com",
-      password: "admin123",
+      email: adminEmail,
+      password: adminPassword,
       email_confirm: true,
       user_metadata: {
         full_name: "Admin Jungle",
@@ -29,12 +37,11 @@ export async function POST() {
     }
 
     const adminId = adminUser?.user?.id
-    console.log("[v0] Setup: Admin user created/exists:", adminId)
 
     if (adminId) {
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: adminId,
-        email: "admin@jungle.com",
+        email: adminEmail,
         full_name: "Admin Jungle",
         role: "admin",
         belt: "black",
@@ -42,15 +49,15 @@ export async function POST() {
         total_classes: 0,
       })
 
-      if (profileError) console.error("[v0] Setup: Admin profile error:", profileError)
+      if (profileError) throw profileError
     }
 
     const { data: studentUser, error: studentError } = await supabase.auth.admin.createUser({
-      email: "aluno@email.com",
-      password: "aluno123",
+      email: studentEmail,
+      password: studentPassword,
       email_confirm: true,
       user_metadata: {
-        full_name: "Pedro Oliveira",
+        full_name: "Aluno Teste",
       },
     })
 
@@ -59,41 +66,34 @@ export async function POST() {
     }
 
     const studentId = studentUser?.user?.id
-    console.log("[v0] Setup: Student user created/exists:", studentId)
 
     if (studentId) {
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: studentId,
-        email: "aluno@email.com",
-        full_name: "Pedro Oliveira",
+        email: studentEmail,
+        full_name: "Aluno Teste",
         role: "student",
         belt: "white",
-        degree: 3,
-        total_classes: 89,
+        degree: 0,
+        total_classes: 0,
       })
 
-      if (profileError) console.error("[v0] Setup: Student profile error:", profileError)
-
-      // Create sample attendance for student
-      await supabase.from("attendances").insert([
-        { student_id: studentId, date: new Date(Date.now() - 86400000 * 1).toISOString() },
-        { student_id: studentId, date: new Date(Date.now() - 86400000 * 2).toISOString() },
-        { student_id: studentId, date: new Date(Date.now() - 86400000 * 3).toISOString() },
-      ])
+      if (profileError) throw profileError
     }
-
-    console.log("[v0] Setup: All users and data created successfully")
 
     return NextResponse.json({
       success: true,
       message: "Users created successfully",
       users: {
-        admin: "admin@jungle.com / admin123",
-        student: "aluno@email.com / aluno123",
+        admin: adminEmail,
+        student: studentEmail,
       },
     })
-  } catch (error: any) {
-    console.error("[v0] Setup error:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error) {
+    console.error("[v0] Setup users error:", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unexpected setup error" },
+      { status: 500 },
+    )
   }
 }

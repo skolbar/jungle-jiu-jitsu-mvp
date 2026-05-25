@@ -1,44 +1,20 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { isAuthFailure, requireAdminProfile } from "@/lib/auth/api-auth"
+import { bulkCheckInDecisionSchema, parseJsonBody } from "@/lib/api/validation"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-type BulkStatus = "approved" | "rejected"
-
 export async function PATCH(request: Request) {
-  const supabase = await createServerClient()
+  const auth = await requireAdminProfile()
+  if (isAuthFailure(auth)) return auth.response
 
-  // Auth
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+  const parsed = await parseJsonBody(request, bulkCheckInDecisionSchema)
+  if ("response" in parsed) return parsed.response
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const { status } = parsed.data
+  const supabase = auth.supabase
 
-  // Confirma role admin no banco
-  const { data: meProfile, error: meProfileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
-
-  if (meProfileError || !meProfile || meProfile.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
-
-  // Body
-  const body = await request.json().catch(() => ({} as any))
-  const status = body?.status as BulkStatus
-
-  if (status !== "approved" && status !== "rejected") {
-    return NextResponse.json({ error: 'Invalid status. Use "approved" or "rejected".' }, { status: 400 })
-  }
-
-  // Busca pendentes (ids + student_id)
   const { data: pending, error: pendingError } = await supabase
     .from("check_ins")
     .select("id, student_id")
@@ -53,55 +29,87 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ updated: 0 }, { status: 200 })
   }
 
-  const ids = pending.map((p) => p.id)
   const nowIso = new Date().toISOString()
 
-  // Atualiza todos os pendentes
-  const { error: updateError } = await supabase
-    .from("check_ins")
-    .update({
-      status,
-      validated_at: nowIso,
-      validated_by: user.id,
-    })
-    .in("id", ids)
+  if (status === "rejected") {
+    const { error: updateError } = await supabase
+      .from("check_ins")
+      .update({
+        status,
+        validated_at: nowIso,
+        validated_by: auth.user.id,
+      })
+      .in(
+        "id",
+        pending.map((item) => item.id),
+      )
+      .eq("status", "pending")
 
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
-  }
-
-  // Se aprovou, replica a lógica do PATCH unitário:
-  // - cria attendance
-  // - incrementa total_classes e cycle_classes
-  if (status === "approved") {
-    // Faz em loop para manter compatibilidade com seu schema atual
-    for (const item of pending) {
-      // Attendance
-      await supabase.from("attendances").insert([
-        {
-          student_id: item.student_id,
-          date: nowIso,
-        },
-      ])
-
-      // Counters
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("total_classes, cycle_classes")
-        .eq("id", item.student_id)
-        .single()
-
-      if (profile) {
-        await supabase
-          .from("profiles")
-          .update({
-            total_classes: (profile.total_classes || 0) + 1,
-            cycle_classes: (profile.cycle_classes || 0) + 1,
-          })
-          .eq("id", item.student_id)
-      }
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
+
+    return NextResponse.json({ updated: pending.length }, { status: 200 })
   }
 
-  return NextResponse.json({ updated: ids.length }, { status: 200 })
+  let updated = 0
+
+  for (const item of pending) {
+    const { data: checkIn, error: updateError } = await supabase
+      .from("check_ins")
+      .update({
+        status: "approved",
+        validated_at: nowIso,
+        validated_by: auth.user.id,
+      })
+      .eq("id", item.id)
+      .eq("status", "pending")
+      .select("id, student_id")
+      .maybeSingle()
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message, updated }, { status: 500 })
+    }
+
+    if (!checkIn) {
+      continue
+    }
+
+    const { error: attendanceError } = await supabase.from("attendances").insert([
+      {
+        student_id: checkIn.student_id,
+        date: nowIso,
+      },
+    ])
+
+    if (attendanceError) {
+      return NextResponse.json({ error: attendanceError.message, updated }, { status: 500 })
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("total_classes, cycle_classes")
+      .eq("id", checkIn.student_id)
+      .single()
+
+    if (profileError || !profile) {
+      return NextResponse.json({ error: "Profile not found for check-in", updated }, { status: 500 })
+    }
+
+    const { error: updateProfileError } = await supabase
+      .from("profiles")
+      .update({
+        total_classes: (profile.total_classes || 0) + 1,
+        cycle_classes: (profile.cycle_classes || 0) + 1,
+      })
+      .eq("id", checkIn.student_id)
+
+    if (updateProfileError) {
+      return NextResponse.json({ error: updateProfileError.message, updated }, { status: 500 })
+    }
+
+    updated += 1
+  }
+
+  return NextResponse.json({ updated }, { status: 200 })
 }

@@ -1,12 +1,18 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { isAuthFailure, requireAdminProfile } from "@/lib/auth/api-auth"
+import { uuidSchema } from "@/lib/api/validation"
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = await createServerClient()
-    const { id } = params
+    const auth = await requireAdminProfile()
+    if (isAuthFailure(auth)) return auth.response
 
-    const { error } = await supabase.from("contents").delete().eq("id", id)
+    const { id } = await params
+    if (!uuidSchema.safeParse(id).success) {
+      return NextResponse.json({ error: "Invalid content id" }, { status: 400 })
+    }
+
+    const { error } = await auth.supabase.from("contents").delete().eq("id", id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })

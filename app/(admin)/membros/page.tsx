@@ -41,7 +41,10 @@ export default function MembrosPage() {
   const fetchContents = async () => {
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.from("contents").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("contents")
+        .select("id,title,description,type,url,required_belt,required_degree,module_slug,category,created_at")
+        .order("created_at", { ascending: false })
 
       if (error) throw error
 

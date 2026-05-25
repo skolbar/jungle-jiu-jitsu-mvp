@@ -153,7 +153,7 @@ export const mockContents: Content[] = [
   },
 ]
 
-export const getBeltColor = (belt: BeltColor): string => {
+export const getBeltColor = (belt: string): string => {
   const colors: Record<BeltColor, string> = {
     Branca: "#FFFFFF",
     Azul: "#2563EB",
@@ -161,5 +161,5 @@ export const getBeltColor = (belt: BeltColor): string => {
     Marrom: "#92400E",
     Preta: "#1A1A1A",
   }
-  return colors[belt]
+  return colors[belt as BeltColor] || "#6E6E6E"
 }

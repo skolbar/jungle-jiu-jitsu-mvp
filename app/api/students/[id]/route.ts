@@ -1,26 +1,25 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { CLASSES_PER_GRADE } from "@/lib/domain/graduation"
+import { SAFE_PROFILE_COLUMNS, isAuthFailure, requireAdminProfile } from "@/lib/auth/api-auth"
+import { parseJsonBody, studentPatchSchema, uuidSchema } from "@/lib/api/validation"
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await createServerClient()
-    const body = await request.json()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!uuidSchema.safeParse(id).success) {
+      return NextResponse.json({ error: "Invalid student id" }, { status: 400 })
     }
 
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const auth = await requireAdminProfile()
+    if (isAuthFailure(auth)) return auth.response
 
-    const updatePayload: Record<string, any> = {
+    const supabase = auth.supabase
+    const parsed = await parseJsonBody(request, studentPatchSchema)
+    if ("response" in parsed) return parsed.response
+
+    const body = parsed.data
+
+    const updatePayload: Record<string, string | number | boolean> = {
       updated_at: new Date().toISOString(),
     }
 
@@ -53,7 +52,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .from("profiles")
       .update(updatePayload)
       .eq("id", id)
-      .select()
+      .select(SAFE_PROFILE_COLUMNS)
       .single()
 
     if (error) throw error
@@ -68,21 +67,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await createServerClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!uuidSchema.safeParse(id).success) {
+      return NextResponse.json({ error: "Invalid student id" }, { status: 400 })
     }
 
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const auth = await requireAdminProfile()
+    if (isAuthFailure(auth)) return auth.response
 
-    const { error } = await supabase.from("profiles").delete().eq("id", id)
+    const { error } = await auth.supabase.from("profiles").delete().eq("id", id)
 
     if (error) throw error
 

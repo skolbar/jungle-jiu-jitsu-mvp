@@ -1,12 +1,16 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { isAuthFailure, requireAdminProfile, requireAuthenticatedProfile } from "@/lib/auth/api-auth"
+import { announcementCreateSchema, parseJsonBody } from "@/lib/api/validation"
+
+const ANNOUNCEMENT_COLUMNS = "id,title,message,created_by,created_at"
 
 export async function GET() {
-  const supabase = await createServerClient()
+  const auth = await requireAuthenticatedProfile()
+  if (isAuthFailure(auth)) return auth.response
 
-  const { data: announcements, error } = await supabase
+  const { data: announcements, error } = await auth.supabase
     .from("announcements")
-    .select("*")
+    .select(ANNOUNCEMENT_COLUMNS)
     .order("created_at", { ascending: false })
 
   if (error) {
@@ -17,27 +21,24 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerClient()
-  const body = await request.json()
+  const auth = await requireAdminProfile()
+  if (isAuthFailure(auth)) return auth.response
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const parsed = await parseJsonBody(request, announcementCreateSchema)
+  if ("response" in parsed) return parsed.response
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const { title, message } = parsed.data
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("announcements")
     .insert([
       {
-        title: body.title,
-        message: body.message,
-        created_by: user.id,
+        title,
+        message,
+        created_by: auth.user.id,
       },
     ])
-    .select()
+    .select(ANNOUNCEMENT_COLUMNS)
     .single()
 
   if (error) {

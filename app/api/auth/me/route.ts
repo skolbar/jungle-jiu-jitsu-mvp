@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
+import { SAFE_PROFILE_COLUMNS } from "@/lib/auth/api-auth"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -20,7 +21,7 @@ export async function GET() {
   // Profile do seu banco
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("*")
+    .select(SAFE_PROFILE_COLUMNS)
     .eq("id", user.id)
     .single()
 

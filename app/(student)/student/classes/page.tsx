@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Video, Lock, ChevronRight, BookOpen } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getBeltName } from "@/lib/domain/belts"
+import { SAFE_PROFILE_COLUMNS } from "@/lib/domain/profile-select"
 
 interface Module {
   slug: string
@@ -62,8 +63,11 @@ export default function StudentClassesPage() {
         const supabase = createClient()
 
         const [contentsRes, profileRes] = await Promise.all([
-          supabase.from("contents").select("*").order("created_at", { ascending: false }),
-          supabase.from("profiles").select("*").eq("id", user.id).single(),
+          supabase
+            .from("contents")
+            .select("id,title,description,type,url,required_belt,required_degree,module_slug,category,created_at")
+            .order("created_at", { ascending: false }),
+          supabase.from("profiles").select(SAFE_PROFILE_COLUMNS).eq("id", user.id).single(),
         ])
 
         if (contentsRes.error) throw contentsRes.error

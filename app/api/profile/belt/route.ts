@@ -1,9 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-
-const ALLOWED_BELTS = ["white", "blue", "purple", "brown", "black"] as const
-
-type AllowedBelt = (typeof ALLOWED_BELTS)[number]
+import { SAFE_PROFILE_COLUMNS } from "@/lib/auth/api-auth"
+import { beltLockSchema, parseJsonBody } from "@/lib/api/validation"
 
 export async function PATCH(request: Request) {
   const supabase = await createServerClient()
@@ -39,23 +37,10 @@ export async function PATCH(request: Request) {
     )
   }
 
-  const body = await request.json()
-  const belt = body?.belt as AllowedBelt | undefined
-  const degree = body?.degree as number | undefined
+  const parsed = await parseJsonBody(request, beltLockSchema)
+  if ("response" in parsed) return parsed.response
 
-  if (!belt || !ALLOWED_BELTS.includes(belt)) {
-    return NextResponse.json(
-      { error: "Invalid belt. Allowed: white/blue/purple/brown/black" },
-      { status: 400 },
-    )
-  }
-
-  if (typeof degree !== "number" || !Number.isInteger(degree) || degree < 0 || degree > 4) {
-    return NextResponse.json(
-      { error: "Invalid degree. Must be an integer from 0 to 4" },
-      { status: 400 },
-    )
-  }
+  const { belt, degree } = parsed.data
 
   // Update atômico: só atualiza se belt_locked ainda for false
   const { data: updated, error: updateError } = await supabase
@@ -67,7 +52,7 @@ export async function PATCH(request: Request) {
     })
     .eq("id", user.id)
     .eq("belt_locked", false)
-    .select("*")
+    .select(SAFE_PROFILE_COLUMNS)
     .single()
 
   // Se não atualizou porque já estava locked (corrida), tratamos

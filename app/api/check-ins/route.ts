@@ -1,10 +1,12 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { isAuthFailure, requireAdminProfile, requireAuthenticatedProfile, requireStudentProfile } from "@/lib/auth/api-auth"
+import { checkInDecisionSchema, parseJsonBody } from "@/lib/api/validation"
 
 export async function GET() {
-  const supabase = await createServerClient()
+  const auth = await requireAuthenticatedProfile()
+  if (isAuthFailure(auth)) return auth.response
 
-  const { data: checkIns, error } = await supabase
+  let query = auth.supabase
     .from("check_ins")
     .select(`
       id,
@@ -21,6 +23,12 @@ export async function GET() {
     `)
     .order("created_at", { ascending: false })
 
+  if (auth.profile.role !== "admin") {
+    query = query.eq("student_id", auth.user.id)
+  }
+
+  const { data: checkIns, error } = await query
+
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
@@ -29,22 +37,16 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerClient()
-  const body = await request.json()
+  const auth = await requireStudentProfile()
+  if (isAuthFailure(auth)) return auth.response
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const supabase = auth.supabase
 
   const { data, error } = await supabase
     .from("check_ins")
     .insert([
       {
-        student_id: user.id,
+        student_id: auth.user.id,
         status: "pending",
       },
     ])
@@ -59,57 +61,70 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const supabase = await createServerClient()
-  const body = await request.json()
+  const auth = await requireAdminProfile()
+  if (isAuthFailure(auth)) return auth.response
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const supabase = auth.supabase
+  const parsed = await parseJsonBody(request, checkInDecisionSchema)
+  if ("response" in parsed) return parsed.response
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const { id, status } = parsed.data
 
-  const updateData: any = {
-    status: body.status,
+  const updateData = {
+    status,
     validated_at: new Date().toISOString(),
-    validated_by: user.id,
+    validated_by: auth.user.id,
   }
 
-  const { data, error } = await supabase.from("check_ins").update(updateData).eq("id", body.id).select().single()
+  const { data, error } = await supabase
+    .from("check_ins")
+    .update(updateData)
+    .eq("id", id)
+    .eq("status", "pending")
+    .select("id,status,student_id,created_at,validated_at,validated_by")
+    .maybeSingle()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  if (!data) {
+    return NextResponse.json({ error: "Check-in not found or already processed" }, { status: 409 })
+  }
+
   // If approved, create attendance and increment counters
-  if (body.status === "approved") {
-    const { data: checkIn } = await supabase.from("check_ins").select("student_id").eq("id", body.id).single()
+  if (status === "approved") {
+    const { error: attendanceError } = await supabase.from("attendances").insert([
+      {
+        student_id: data.student_id,
+        date: new Date().toISOString(),
+      },
+    ])
 
-    if (checkIn) {
-      // Create attendance record
-      await supabase.from("attendances").insert([
-        {
-          student_id: checkIn.student_id,
-          date: new Date().toISOString(),
-        },
-      ])
+    if (attendanceError) {
+      return NextResponse.json({ error: attendanceError.message }, { status: 500 })
+    }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("total_classes, cycle_classes")
-        .eq("id", checkIn.student_id)
-        .single()
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("total_classes, cycle_classes")
+      .eq("id", data.student_id)
+      .single()
 
-      if (profile) {
-        await supabase
-          .from("profiles")
-          .update({
-            total_classes: (profile.total_classes || 0) + 1,
-            cycle_classes: (profile.cycle_classes || 0) + 1,
-          })
-          .eq("id", checkIn.student_id)
-      }
+    if (profileError || !profile) {
+      return NextResponse.json({ error: "Profile not found for check-in" }, { status: 500 })
+    }
+
+    const { error: updateProfileError } = await supabase
+      .from("profiles")
+      .update({
+        total_classes: (profile.total_classes || 0) + 1,
+        cycle_classes: (profile.cycle_classes || 0) + 1,
+      })
+      .eq("id", data.student_id)
+
+    if (updateProfileError) {
+      return NextResponse.json({ error: updateProfileError.message }, { status: 500 })
     }
   }
 

@@ -1,29 +1,29 @@
 import type { Belt } from "./types"
 
-export const BELT_ORDER: Belt[] = ["WHITE", "BLUE", "PURPLE", "BROWN", "BLACK"]
+export const BELT_ORDER: Belt[] = ["white", "blue", "purple", "brown", "black"]
 
 export const BELT_RANKS: Record<Belt, number> = {
-  WHITE: 1,
-  BLUE: 2,
-  PURPLE: 3,
-  BROWN: 4,
-  BLACK: 5,
+  white: 1,
+  blue: 2,
+  purple: 3,
+  brown: 4,
+  black: 5,
 }
 
 export const BELT_COLORS: Record<Belt, string> = {
-  WHITE: "#FFFFFF",
-  BLUE: "#2563EB",
-  PURPLE: "#7C3AED",
-  BROWN: "#92400E",
-  BLACK: "#1A1A1A",
+  white: "#FFFFFF",
+  blue: "#2563EB",
+  purple: "#7C3AED",
+  brown: "#92400E",
+  black: "#1A1A1A",
 }
 
 export const BELT_NAMES_PT: Record<Belt, string> = {
-  WHITE: "Branca",
-  BLUE: "Azul",
-  PURPLE: "Roxa",
-  BROWN: "Marrom",
-  BLACK: "Preta",
+  white: "Branca",
+  blue: "Azul",
+  purple: "Roxa",
+  brown: "Marrom",
+  black: "Preta",
 }
 
 export function isBeltAtLeast(studentBelt: Belt, minBelt: Belt): boolean {
@@ -35,8 +35,8 @@ export function getBeltRank(belt: Belt): number {
 }
 
 export function getBeltName(belt: string): string {
-  const beltUpper = belt.toUpperCase() as Belt
-  return BELT_NAMES_PT[beltUpper] || belt
+  const normalized = belt.toLowerCase() as Belt
+  return BELT_NAMES_PT[normalized] || belt
 }
 
 export function getBeltOrder(belt: string): number {

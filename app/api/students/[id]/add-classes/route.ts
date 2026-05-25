@@ -1,28 +1,22 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { SAFE_PROFILE_COLUMNS, isAuthFailure, requireAdminProfile } from "@/lib/auth/api-auth"
+import { addClassesSchema, parseJsonBody, uuidSchema } from "@/lib/api/validation"
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await createServerClient()
-    const body = await request.json()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!uuidSchema.safeParse(id).success) {
+      return NextResponse.json({ error: "Invalid student id" }, { status: 400 })
     }
 
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const auth = await requireAdminProfile()
+    if (isAuthFailure(auth)) return auth.response
 
-    const quantity = body.quantity
-    if (!quantity || quantity <= 0) {
-      return NextResponse.json({ error: "Quantidade inválida" }, { status: 400 })
-    }
+    const parsed = await parseJsonBody(request, addClassesSchema)
+    if ("response" in parsed) return parsed.response
+
+    const { quantity } = parsed.data
+    const supabase = auth.supabase
 
     const { data: student, error: fetchError } = await supabase
       .from("profiles")
@@ -31,7 +25,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .single()
 
     if (fetchError || !student) {
-      return NextResponse.json({ error: "Aluno não encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Aluno nao encontrado" }, { status: 404 })
     }
 
     const { data, error } = await supabase
@@ -42,7 +36,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .select()
+      .select(SAFE_PROFILE_COLUMNS)
       .single()
 
     if (error) throw error

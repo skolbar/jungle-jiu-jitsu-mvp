@@ -7,6 +7,7 @@ import "server-only"
  */
 import { createServerClient } from "@/lib/supabase/server"
 import type { Profile } from "@/lib/domain/types"
+import { SAFE_PROFILE_COLUMNS } from "@/lib/auth/api-auth"
 
 export interface CurrentUser {
   userId: string
@@ -29,7 +30,7 @@ export async function getCurrentProfile(): Promise<CurrentUser | null> {
   // Single profile fetch per request
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("*")
+    .select(SAFE_PROFILE_COLUMNS)
     .eq("id", user.id)
     .single()
 

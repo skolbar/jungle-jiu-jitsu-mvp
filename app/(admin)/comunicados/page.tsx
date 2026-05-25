@@ -36,7 +36,10 @@ export default function ComunicadosPage() {
   const fetchAnnouncements = async () => {
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.from("announcements").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("announcements")
+        .select("id,title,message,created_by,created_at")
+        .order("created_at", { ascending: false })
 
       if (error) throw error
       setAnnouncements(data || [])

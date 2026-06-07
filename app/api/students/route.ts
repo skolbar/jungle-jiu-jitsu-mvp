@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { SAFE_PROFILE_COLUMNS, isAuthFailure, requireAdminProfile } from "@/lib/auth/api-auth"
 import { legacyStudentCreateSchema, legacyStudentUpdateSchema, parseJsonBody } from "@/lib/api/validation"
 
-export async function GET() {
-  const auth = await requireAdminProfile()
+export async function GET(request: Request) {
+  const auth = await requireAdminProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const { data: students, error } = await auth.supabase
@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminProfile()
+    const auth = await requireAdminProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const parsed = await parseJsonBody(request, legacyStudentCreateSchema)
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const auth = await requireAdminProfile()
+  const auth = await requireAdminProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const parsed = await parseJsonBody(request, legacyStudentUpdateSchema)

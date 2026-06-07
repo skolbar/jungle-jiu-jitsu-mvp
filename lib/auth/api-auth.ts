@@ -1,17 +1,15 @@
 import "server-only"
 
 import { NextResponse } from "next/server"
-import type { User } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient, type SupabaseClient, type User } from "@supabase/supabase-js"
 import { createServerClient } from "@/lib/supabase/server"
 import type { Profile } from "@/lib/domain/types"
 import { SAFE_PROFILE_COLUMNS } from "@/lib/domain/profile-select"
 
 export { SAFE_PROFILE_COLUMNS }
 
-type SupabaseServerClient = Awaited<ReturnType<typeof createServerClient>>
-
 export interface ApiAuthContext {
-  supabase: SupabaseServerClient
+  supabase: SupabaseClient
   user: User
   profile: Profile
 }
@@ -30,13 +28,46 @@ export function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status })
 }
 
-export async function requireAuthenticatedProfile(): Promise<ApiAuthResult> {
-  const supabase = await createServerClient()
+function getBearerToken(request?: Request): string | null {
+  const authorization = request?.headers.get("authorization")
+  if (!authorization) return null
+
+  const [scheme, token] = authorization.split(" ")
+  if (scheme?.toLowerCase() !== "bearer" || !token) return null
+
+  return token.trim()
+}
+
+function createBearerClient(token: string): SupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Missing Supabase environment variables")
+  }
+
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  })
+}
+
+export async function requireAuthenticatedProfile(request?: Request): Promise<ApiAuthResult> {
+  const bearerToken = getBearerToken(request)
+  const supabase = bearerToken ? createBearerClient(bearerToken) : await createServerClient()
 
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser()
+  } = bearerToken ? await supabase.auth.getUser(bearerToken) : await supabase.auth.getUser()
 
   if (authError || !user) {
     return { response: jsonError("Unauthorized", 401) }
@@ -59,8 +90,8 @@ export async function requireAuthenticatedProfile(): Promise<ApiAuthResult> {
   }
 }
 
-export async function requireAdminProfile(): Promise<ApiAuthResult> {
-  const auth = await requireAuthenticatedProfile()
+export async function requireAdminProfile(request?: Request): Promise<ApiAuthResult> {
+  const auth = await requireAuthenticatedProfile(request)
 
   if (isAuthFailure(auth)) {
     return auth
@@ -73,8 +104,8 @@ export async function requireAdminProfile(): Promise<ApiAuthResult> {
   return auth
 }
 
-export async function requireStudentProfile(): Promise<ApiAuthResult> {
-  const auth = await requireAuthenticatedProfile()
+export async function requireStudentProfile(request?: Request): Promise<ApiAuthResult> {
+  const auth = await requireAuthenticatedProfile(request)
 
   if (isAuthFailure(auth)) {
     return auth

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { isAuthFailure, requireAdminProfile } from "@/lib/auth/api-auth"
 
-export async function GET() {
-  const auth = await requireAdminProfile()
+export async function GET(request: Request) {
+  const auth = await requireAdminProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const supabase = auth.supabase

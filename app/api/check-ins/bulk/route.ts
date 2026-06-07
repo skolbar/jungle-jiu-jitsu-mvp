@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 export async function PATCH(request: Request) {
-  const auth = await requireAdminProfile()
+  const auth = await requireAdminProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const parsed = await parseJsonBody(request, bulkCheckInDecisionSchema)

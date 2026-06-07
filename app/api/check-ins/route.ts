@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { isAuthFailure, requireAdminProfile, requireAuthenticatedProfile, requireStudentProfile } from "@/lib/auth/api-auth"
 import { checkInDecisionSchema, parseJsonBody } from "@/lib/api/validation"
 
-export async function GET() {
-  const auth = await requireAuthenticatedProfile()
+export async function GET(request: Request) {
+  const auth = await requireAuthenticatedProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   let query = auth.supabase
@@ -37,7 +37,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireStudentProfile()
+  const auth = await requireStudentProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const supabase = auth.supabase
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await requireAdminProfile()
+  const auth = await requireAdminProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const supabase = auth.supabase

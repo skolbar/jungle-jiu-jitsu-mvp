@@ -10,7 +10,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Invalid student id" }, { status: 400 })
     }
 
-    const auth = await requireAdminProfile()
+    const auth = await requireAdminProfile(request)
     if (isAuthFailure(auth)) return auth.response
 
     const supabase = auth.supabase
@@ -71,7 +71,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Invalid student id" }, { status: 400 })
     }
 
-    const auth = await requireAdminProfile()
+    const auth = await requireAdminProfile(request)
     if (isAuthFailure(auth)) return auth.response
 
     const { error } = await auth.supabase.from("profiles").delete().eq("id", id)

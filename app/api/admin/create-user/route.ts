@@ -5,7 +5,7 @@ import { createUserSchema, parseJsonBody } from "@/lib/api/validation"
 
 export async function POST(request: Request) {
   try {
-    const auth = await requireAdminProfile()
+    const auth = await requireAdminProfile(request)
     if (isAuthFailure(auth)) return auth.response
 
     const parsed = await parseJsonBody(request, createUserSchema)

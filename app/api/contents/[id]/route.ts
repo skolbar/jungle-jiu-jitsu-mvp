@@ -2,9 +2,9 @@ import { NextResponse } from "next/server"
 import { isAuthFailure, requireAdminProfile } from "@/lib/auth/api-auth"
 import { uuidSchema } from "@/lib/api/validation"
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdminProfile()
+    const auth = await requireAdminProfile(request)
     if (isAuthFailure(auth)) return auth.response
 
     const { id } = await params

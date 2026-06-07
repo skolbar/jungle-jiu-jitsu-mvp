@@ -36,6 +36,7 @@ const BELT_OPTIONS: { value: Belt; label: string }[] = [
 
 export default function StudentProfilePage() {
   const { user, isLoading, logout, refreshProfile } = useAuth()
+  const userId = user?.id
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [student, setStudent] = useState<any>(null)
@@ -62,11 +63,11 @@ export default function StudentProfilePage() {
   const [degreeDraft, setDegreeDraft] = useState<number>(0)
 
   const fetchProfile = useCallback(async () => {
-    if (!user?.id) return
+    if (!userId) return
 
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.from("profiles").select(SAFE_PROFILE_COLUMNS).eq("id", user.id).single()
+      const { data, error } = await supabase.from("profiles").select(SAFE_PROFILE_COLUMNS).eq("id", userId).single()
 
       if (error) throw error
 
@@ -82,7 +83,7 @@ export default function StudentProfilePage() {
     } finally {
       setLoading(false)
     }
-  }, [user?.id])
+  }, [userId])
 
   useEffect(() => {
     if (isLoading) return

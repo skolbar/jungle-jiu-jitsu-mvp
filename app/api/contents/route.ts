@@ -5,7 +5,7 @@ import { contentCreateSchema, parseJsonBody } from "@/lib/api/validation"
 const CONTENT_COLUMNS = "id,title,description,type,url,required_belt,required_degree,module_slug,category,created_at"
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuthenticatedProfile()
+  const auth = await requireAuthenticatedProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const searchParams = request.nextUrl.searchParams
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAdminProfile()
+    const auth = await requireAdminProfile(request)
     if (isAuthFailure(auth)) return auth.response
 
     const parsed = await parseJsonBody(request, contentCreateSchema)

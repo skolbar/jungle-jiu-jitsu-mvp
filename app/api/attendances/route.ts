@@ -3,7 +3,7 @@ import { isAuthFailure, requireAdminProfile, requireAuthenticatedProfile } from 
 import { createAttendanceSchema, parseJsonBody, uuidSchema } from "@/lib/api/validation"
 
 export async function GET(request: Request) {
-  const auth = await requireAuthenticatedProfile()
+  const auth = await requireAuthenticatedProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const supabase = auth.supabase
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminProfile()
+  const auth = await requireAdminProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const supabase = auth.supabase

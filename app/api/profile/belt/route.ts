@@ -1,25 +1,16 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-import { SAFE_PROFILE_COLUMNS } from "@/lib/auth/api-auth"
+import { SAFE_PROFILE_COLUMNS, isAuthFailure, requireAuthenticatedProfile } from "@/lib/auth/api-auth"
 import { beltLockSchema, parseJsonBody } from "@/lib/api/validation"
 
 export async function PATCH(request: Request) {
-  const supabase = await createServerClient()
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const auth = await requireAuthenticatedProfile(request)
+  if (isAuthFailure(auth)) return auth.response
 
   // Lê profile atual (pra validar role e lock)
-  const { data: currentProfile, error: profileError } = await supabase
+  const { data: currentProfile, error: profileError } = await auth.supabase
     .from("profiles")
     .select("id, role, belt_locked")
-    .eq("id", user.id)
+    .eq("id", auth.user.id)
     .single()
 
   if (profileError || !currentProfile) {
@@ -43,14 +34,14 @@ export async function PATCH(request: Request) {
   const { belt, degree } = parsed.data
 
   // Update atômico: só atualiza se belt_locked ainda for false
-  const { data: updated, error: updateError } = await supabase
+  const { data: updated, error: updateError } = await auth.supabase
     .from("profiles")
     .update({
       belt,
       degree,
       belt_locked: true,
     })
-    .eq("id", user.id)
+    .eq("id", auth.user.id)
     .eq("belt_locked", false)
     .select(SAFE_PROFILE_COLUMNS)
     .single()

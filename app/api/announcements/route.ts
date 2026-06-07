@@ -4,8 +4,8 @@ import { announcementCreateSchema, parseJsonBody } from "@/lib/api/validation"
 
 const ANNOUNCEMENT_COLUMNS = "id,title,message,created_by,created_at"
 
-export async function GET() {
-  const auth = await requireAuthenticatedProfile()
+export async function GET(request: Request) {
+  const auth = await requireAuthenticatedProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const { data: announcements, error } = await auth.supabase
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminProfile()
+  const auth = await requireAdminProfile(request)
   if (isAuthFailure(auth)) return auth.response
 
   const parsed = await parseJsonBody(request, announcementCreateSchema)

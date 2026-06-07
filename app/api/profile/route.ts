@@ -1,18 +1,10 @@
-import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-import { SAFE_PROFILE_COLUMNS } from "@/lib/auth/api-auth"
+import { SAFE_PROFILE_COLUMNS, isAuthFailure, requireAuthenticatedProfile } from "@/lib/auth/api-auth"
 import { parseJsonBody, profileUpdateSchema } from "@/lib/api/validation"
 
 export async function PATCH(request: Request) {
-  const supabase = await createServerClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const auth = await requireAuthenticatedProfile(request)
+  if (isAuthFailure(auth)) return auth.response
 
   const parsed = await parseJsonBody(request, profileUpdateSchema)
   if ("response" in parsed) return parsed.response
@@ -23,10 +15,10 @@ export async function PATCH(request: Request) {
   if (full_name !== undefined) updateData.full_name = full_name
   if (avatar_url !== undefined) updateData.avatar_url = avatar_url
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("profiles")
     .update(updateData)
-    .eq("id", user.id)
+    .eq("id", auth.user.id)
     .select(SAFE_PROFILE_COLUMNS)
     .single()
 

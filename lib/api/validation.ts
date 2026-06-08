@@ -39,8 +39,9 @@ export const studentPatchSchema = z
     full_name: trimmedString(120).optional(),
     belt: beltSchema.optional(),
     degree: degreeSchema.optional(),
+    reset_cycle_classes: z.boolean().optional().default(false),
   })
-  .refine((value) => Object.keys(value).length > 0, {
+  .refine((value) => value.full_name !== undefined || value.belt !== undefined || value.degree !== undefined, {
     message: "At least one field must be provided",
   })
 

@@ -19,6 +19,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const body = parsed.data
 
+    const { data: studentData, error: studentFetchError } = await supabase
+      .from("profiles")
+      .select("belt, degree, cycle_classes")
+      .eq("id", id)
+      .single()
+
+    if (studentFetchError || !studentData) {
+      return NextResponse.json({ error: "Aluno nao encontrado" }, { status: 404 })
+    }
+
+    const requestedBelt = body.belt ?? studentData.belt
+    const requestedDegree = body.degree ?? studentData.degree
+    const graduationChanged = requestedBelt !== studentData.belt || requestedDegree !== studentData.degree
+
     const updatePayload: Record<string, string | number | boolean> = {
       updated_at: new Date().toISOString(),
     }
@@ -27,22 +41,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (body.belt !== undefined) updatePayload.belt = body.belt
     if (body.degree !== undefined) updatePayload.degree = body.degree
 
-    if (body.belt !== undefined || body.degree !== undefined) {
-      const { data: studentData } = await supabase
-        .from("profiles")
-        .select("belt, cycle_classes")
-        .eq("id", id)
-        .single()
+    if (body.reset_cycle_classes && graduationChanged) {
+      const classesPerGrade = CLASSES_PER_GRADE[studentData.belt as keyof typeof CLASSES_PER_GRADE]
 
-      if (studentData) {
-        const classesPerGrade = CLASSES_PER_GRADE[studentData.belt as keyof typeof CLASSES_PER_GRADE]
-
-        if (classesPerGrade !== null && classesPerGrade !== undefined) {
-          const excedente = studentData.cycle_classes - classesPerGrade
-          updatePayload.cycle_classes = excedente > 0 ? excedente : 0
-        } else {
-          updatePayload.cycle_classes = 0
-        }
+      if (classesPerGrade !== null && classesPerGrade !== undefined) {
+        const excedente = studentData.cycle_classes - classesPerGrade
+        updatePayload.cycle_classes = excedente > 0 ? excedente : 0
       } else {
         updatePayload.cycle_classes = 0
       }

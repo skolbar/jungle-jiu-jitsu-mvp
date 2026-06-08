@@ -96,7 +96,7 @@ export default function GraduacaoPage() {
       const response = await fetch(`/api/students/${studentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ belt: newBelt, degree: newDegree }),
+        body: JSON.stringify({ belt: newBelt, degree: newDegree, reset_cycle_classes: true }),
       })
 
       if (!response.ok) throw new Error("Failed to promote student")

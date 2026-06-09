@@ -36,6 +36,7 @@ async function fetchMe(signal?: AbortSignal): Promise<{ ok: true; user: Profile 
 function isPublicPath(pathname: string) {
   if (!pathname) return false
   if (pathname === "/login") return true
+  if (pathname === "/politica-de-privacidade") return true
   if (pathname.startsWith("/auth/")) return true
   return false
 }

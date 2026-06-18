@@ -1,21 +1,20 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Search, User, MoreVertical } from "lucide-react"
+import { Plus, Search, User } from "lucide-react"
 import { getBeltColor } from "@/lib/mock-data"
 import { StudentDialog } from "@/components/student-dialog"
 import { AddClassesDialog } from "@/components/add-classes-dialog"
 import { RemoveStudentDialog } from "@/components/remove-student-dialog"
+import { ResetStudentPasswordDialog } from "@/components/reset-student-password-dialog"
 
 export default function AlunosPage() {
   const { user, isLoading } = useAuth()
-  const router = useRouter()
   const [students, setStudents] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -23,6 +22,7 @@ export default function AlunosPage() {
   const [loading, setLoading] = useState(true)
   const [addClassesOpen, setAddClassesOpen] = useState(false)
   const [removeStudentOpen, setRemoveStudentOpen] = useState(false)
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false)
   const [selectedForAction, setSelectedForAction] = useState<any | undefined>()
 
   useEffect(() => {
@@ -147,17 +147,26 @@ export default function AlunosPage() {
                   </div>
                   
                   {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2">
+                  <div className="grid gap-2 pt-2 sm:grid-cols-3">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex-1"
                       onClick={() => {
                         setSelectedForAction(student)
                         setAddClassesOpen(true)
                       }}
                     >
-                      Adicionar Aulas
+                      Aulas
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedForAction(student)
+                        setResetPasswordOpen(true)
+                      }}
+                    >
+                      Senha
                     </Button>
                     <Button
                       size="sm"
@@ -203,6 +212,12 @@ export default function AlunosPage() {
         onRemoved={() => {
           fetchStudents()
         }}
+      />
+
+      <ResetStudentPasswordDialog
+        student={selectedForAction}
+        open={resetPasswordOpen}
+        onOpenChange={setResetPasswordOpen}
       />
     </DashboardLayout>
   )

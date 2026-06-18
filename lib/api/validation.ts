@@ -98,6 +98,10 @@ export const passwordUpdateSchema = z.object({
   newPassword: z.string().min(6).max(128),
 })
 
+export const studentPasswordResetSchema = z.object({
+  newPassword: z.string().min(6).max(128),
+})
+
 export const beltLockSchema = z.object({
   belt: beltSchema,
   degree: degreeSchema,

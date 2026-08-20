@@ -12,6 +12,7 @@ import {
   Award,
   BookOpen,
   MessageSquare,
+  Handshake,
   Settings,
   LogOut,
   Home,
@@ -34,6 +35,7 @@ const adminNavItems = [
   { href: "/graduacao", label: "Graduação", icon: Award },
   { href: "/membros", label: "Área de Membros", icon: BookOpen },
   { href: "/comunicados", label: "Comunicados", icon: MessageSquare },
+  { href: "/parceiros", label: "Parceiros Jungle", icon: Handshake },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ]
 
@@ -41,6 +43,7 @@ const studentNavItems = [
   { href: "/student/home", label: "Início", icon: Home },
   { href: "/student/classes", label: "Conteúdos", icon: BookOpen },
   { href: "/student/announcements", label: "Comunicados", icon: MessageSquare },
+  { href: "/student/partners", label: "Parceiros", icon: Handshake },
   { href: "/student/profile", label: "Perfil", icon: User },
 ]
 
@@ -59,6 +62,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     pathname.startsWith("/graduacao") ||
     pathname.startsWith("/membros") ||
     pathname.startsWith("/comunicados") ||
+    pathname.startsWith("/parceiros") ||
     pathname.startsWith("/configuracoes")
 
   // Preferência: role (se existir), senão rota

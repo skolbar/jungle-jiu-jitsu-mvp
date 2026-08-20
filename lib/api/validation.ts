@@ -98,6 +98,29 @@ export const passwordUpdateSchema = z.object({
   newPassword: z.string().min(6).max(128),
 })
 
+const optionalUrl = z.union([z.string().trim().url().max(2048), z.literal("")]).optional().transform((value) => value || null)
+
+export const partnerPayloadSchema = z.object({
+  name: trimmedString(120),
+  slug: z.string().trim().min(2).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  category: trimmedString(80),
+  description: z.string().trim().max(2000).default(""),
+  logo_url: optionalUrl,
+  cover_url: optionalUrl,
+  gallery_urls: z.array(z.string().trim().url().max(2048)).max(6).default([]),
+  benefit_title: z.string().trim().max(160).default(""),
+  benefit_description: z.string().trim().max(1000).default(""),
+  coupon_code: z.string().trim().max(80).optional().transform((value) => value || null),
+  whatsapp_url: optionalUrl,
+  instagram_url: optionalUrl,
+  website_url: optionalUrl,
+  address: z.string().trim().max(300).optional().transform((value) => value || null),
+  is_featured: z.boolean().default(false),
+  is_active: z.boolean().default(true),
+  display_order: z.coerce.number().int().min(0).max(100000).default(0),
+  valid_until: z.union([z.string().trim().date(), z.literal("")]).optional().transform((value) => value || null),
+})
+
 export const studentPasswordResetSchema = z.object({
   newPassword: z.string().min(6).max(128),
 })
